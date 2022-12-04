@@ -1,0 +1,204 @@
+<html>
+  <head>
+    <title>LV3</title>
+  </head>
+
+  <body style="background: black;">
+    <canvas id="view" style="width: 100%; height: 100%;"></canvas>
+
+    <script>
+      // Game settings
+      const minEntityCount = 5;
+      const maxEntityCount = 15;
+      const maxVelocity = 50.0;
+
+      var hitCount = 0;
+
+      // Get the canvas and set it's size
+      let canvas = document.getElementById("view");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      let ctx = canvas.getContext("2d");
+
+      // Class for game objects
+      class Entity
+      {
+        // Initialize 
+        constructor()
+        {
+          this.height = 50;
+          this.width = 50;
+          
+          // Position
+          this.x = Math.random() * (canvas.width - this.width - 20) + 10;
+          this.y = Math.random() * (canvas.height - this.height - 20) + 10;
+
+          // Velocity
+          let angle = (Math.random() * 360.0) * Math.PI / 180.0;
+          let length = Math.random() * 9.0 + 3.0;
+
+          this.vx = length * Math.cos(angle);
+          this.vy = length * Math.sin(angle);
+        }
+
+        update()
+        {
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Check whether we bounced off of the wall
+          let hitWall = false;
+          if (this.x + this.width >= canvas.width)
+          {
+            hitWall = true;
+            this.x = canvas.width - this.width;
+            this.vx = -this.vx;
+          }
+          if (this.x < 0)
+          {
+            hitWall = true;
+            this.x = 0;
+            this.vx = -this.vx;
+          }
+          if (this.y + this.height >= canvas.height)
+          {
+            hitWall = true;
+            this.y = canvas.height - this.height;
+            this.vy = -this.vy;
+          }
+          if (this.y < 0)
+          {
+            hitWall = true;
+            this.y = 0;
+            this.vy = -this.vy;
+          }
+
+          // Change velocity if we've hit the wall
+          if (hitWall)
+          {
+            let angle = Math.atan2(this.vy, this.vx);
+            let length = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+
+            // Increase the velocity vector length by a random value
+            length = Math.max(-maxVelocity, Math.min(maxVelocity, length + ((Math.random() * 10.0) - 5.0)));
+
+            // Ensure it's not super slow
+            if (Math.abs(length) < 5.0)
+            {
+              length = ((length != 0) ? Math.sign(length) : 1) * 5.0;
+            }
+
+            // Apply the new velocity
+            this.vx = length * Math.cos(angle);
+            this.vy = length * Math.sin(angle);
+          }
+        }
+
+        draw(ctx)
+        {
+          ctx.fillStyle = "#ff0000";
+          ctx.fillRect(this.x, this.y, this.width, this.height);
+
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(this.x, this.y, this.width, this.height);
+        }
+      }
+
+      // Create random number of game objects
+      let entityCount = Math.round(Math.random() * (maxEntityCount - minEntityCount)) + minEntityCount;
+      var entities = [];
+      for (let i = 0; i < entityCount; i++)
+      {
+        entities.push(new Entity());
+      }
+
+      // Register events (window resize & mouse click on canvas)
+      window.addEventListener('resize', function()
+      {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      });
+
+      canvas.addEventListener('mousedown', function(e)
+      {
+        const mx = event.clientX;
+        const my = event.clientY;
+        
+        let del_idx = -1;
+        for (let i = 0; i < entities.length; i++)
+        {
+          if (mx > entities[i].x && mx < (entities[i].x + entities[i].width) &&
+              my > entities[i].y && my < (entities[i].y + entities[i].height))
+          {
+            del_idx = i;
+          }
+        }
+
+        if (del_idx >= 0)
+        {
+          entities.splice(del_idx, 1);
+          hitCount++;
+        }
+      });
+
+      // Polyfill for requestAnimationFrame
+      (function() {
+        let requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+            window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+        window.requestAnimationFrame = requestAnimationFrame;
+      })();
+
+      // Rendering step
+      function render()
+      {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Render game objects
+        for (let i = 0; i < entities.length; i++)
+        {
+          entities[i].draw(ctx);
+        }
+
+        // Render UI
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px Arial";
+
+        if (entities.length == 0)
+        {
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "center";
+          
+          let messageSize = ctx.measureText("You win! Refresh the page for a new game.");
+          ctx.fillText("You win! Refresh the page for a new game.", canvas.width / 2, canvas.height / 2);
+        }
+        else
+        {
+          ctx.textBaseline = "top";
+          ctx.textAlign = "left";
+
+          let totalObjsWidth = ctx.measureText("Objects: " + entityCount).width;
+          ctx.fillText("Objects: " + entityCount, canvas.width - totalObjsWidth - 20, 10);
+
+          let hitCountWidth = ctx.measureText("Hit: " + hitCount).width;
+          ctx.fillText("Hit: " + hitCount, canvas.width - hitCountWidth - 20, 35);
+        }
+      }
+      
+      // Game logic step
+      function update()
+      {
+        for (let i = 0; i < entities.length; i++)
+        {
+          entities[i].update();
+        }
+
+        requestAnimationFrame(render);
+      }
+
+      requestAnimationFrame(render);
+      setInterval(update, 1000 / 60);
+    </script>
+  </body>
+</html>
